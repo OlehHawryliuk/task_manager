@@ -4,9 +4,12 @@ import (
 	"log"
 	"os"
 
+	"github.com/OlehHawryliuk/task_manager/internal/model"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
+
+var DB *gorm.DB
 
 func ConnectToDB() *gorm.DB {
 	dsn := os.Getenv("DB_URL")
@@ -16,6 +19,10 @@ func ConnectToDB() *gorm.DB {
 		log.Fatal("Couldn`t connect to database")
 	}
 
+	db.AutoMigrate(&model.Task{}, &model.User{})
+
 	log.Println("db connected successfully")
+
+	DB = db
 	return db
 }

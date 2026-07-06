@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"github.com/OlehHawryliuk/task_manager/internal/config"
+	"github.com/OlehHawryliuk/task_manager/internal/repository"
 	"github.com/gin-gonic/gin"
 	"github.com/subosito/gotenv"
 )
@@ -20,10 +21,7 @@ func main() {
 	_ = db
 
 	router := gin.Default()
-	router.GET("/ping", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"message": "pong",
-		})
-	})
-	router.Run() // listens on p by default
+	router.POST("/", repository.CreateTask)
+
+	router.Run()
 }
