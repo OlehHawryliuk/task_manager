@@ -1,33 +1,42 @@
 package repository
 
 import (
-	"time"
-
-	"github.com/OlehHawryliuk/task_manager/internal/config"
 	"github.com/OlehHawryliuk/task_manager/internal/model"
-	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
-func CreateTask(c *gin.Context) {
-	task := model.Task{
-		ID:          uuid.New(),
-		Title:       "make new project",
-		Description: "use gorm and gin",
-		Done:        false,
-		UserID:      uuid.New(),
-		CreatedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
+type TaskRepository struct {
+	db *gorm.DB
+}
+
+func NewTaskRepo(db *gorm.DB) *TaskRepository {
+	return &TaskRepository{db: db}
+}
+
+func (r *TaskRepository) CreateTask(task *model.Task) error {
+	return r.db.Create(task).Error
+}
+
+func (r *TaskRepository) GetTaskByID(id uuid.UUID) (*model.Task, error) {
+	var task model.Task
+	err := r.db.First(&task, "id = ?", id).Error
+	if err != nil {
+		return nil, err
 	}
+	return &task, nil
+}
 
-	result := config.DB.Create(&task)
+func (r *TaskRepository) GeatAllTasks() ([]model.Task, error) {
+	var tasks []model.Task
+	err := r.db.Find(&tasks).Error
+	return tasks, err
+}
 
-	if result.Error != nil {
-		c.Status(400)
-		return
-	}
+func (r *TaskRepository) UpdateTask(task *model.Task) error {
+	return r.db.Save(task).Error
+}
 
-	c.JSON(200, gin.H{
-		"task": task,
-	})
+func (r *TaskRepository) DeleteTask(id uuid.UUID) error {
+	return r.db.Delete(&model.Task{}, "id = ?", id).Error
 }

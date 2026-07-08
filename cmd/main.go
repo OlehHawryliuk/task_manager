@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"github.com/OlehHawryliuk/task_manager/internal/config"
+	"github.com/OlehHawryliuk/task_manager/internal/handler"
 	"github.com/OlehHawryliuk/task_manager/internal/repository"
 	"github.com/gin-gonic/gin"
 	"github.com/subosito/gotenv"
@@ -18,10 +19,11 @@ func init() {
 
 func main() {
 	db := config.ConnectToDB()
-	_ = db
+	repo := repository.NewTaskRepo(db)
+	taskHadnlder := handler.NewTaskHandler(repo)
 
 	router := gin.Default()
-	router.POST("/", repository.CreateTask)
+	router.POST("/tasks", taskHadnlder.CreateTask)
 
 	router.Run()
 }
