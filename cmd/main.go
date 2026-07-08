@@ -24,7 +24,10 @@ func main() {
 
 	router := gin.Default()
 	router.POST("/tasks", taskHadnlder.CreateTask)
-	router.GET("/task:id", taskHadnlder.GetTaskByID)
+	router.GET("/task/:id", taskHadnlder.GetTaskByID)
+	router.GET("/tasks", taskHadnlder.GeatAllTasks)
+	router.PUT("/task/:id", taskHadnlder.UpdateTask)
+	router.DELETE("/task/:id", taskHadnlder.DeleteTask)
 
 	router.Run()
 }
