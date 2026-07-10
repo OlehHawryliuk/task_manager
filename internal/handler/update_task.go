@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/OlehHawryliuk/task_manager/internal/model"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
@@ -19,32 +18,35 @@ func (h *TaskHandler) UpdateTask(c *gin.Context) {
 	id := c.Param("id")
 	taskID, err := uuid.Parse(id)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid task id",
-		})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid task id"})
+		return
 	}
 
 	var req UpdateTaskRequest
-	err = c.ShouldBindJSON(&req)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": err.Error(),
-		})
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
 	}
 
-	task := model.Task{
-		ID:          taskID,
-		Description: req.Description,
-		Title:       req.Title,
-		Done:        req.Done,
-		UpdatedAt:   time.Now(),
+	task, err := h.repo.GetTaskByID(taskID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Task not found"})
+		return
 	}
 
-	err = h.repo.UpdateTask(&task)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Failed to update task",
-		})
+	if req.Title != "" {
+		task.Title = req.Title
 	}
+	if req.Description != "" {
+		task.Description = req.Description
+	}
+	task.Done = req.Done
+	task.UpdatedAt = time.Now()
+
+	if err := h.repo.UpdateTask(task); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update task"})
+		return
+	}
+
 	c.JSON(http.StatusOK, task)
 }
