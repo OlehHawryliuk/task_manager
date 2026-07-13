@@ -23,6 +23,12 @@ type CreateTaskRequest struct {
 	Description string `json:"description"`
 }
 
+type UpdateTaskRequest struct {
+	Title       string `json:"title"`
+	Description string `json:"description"`
+	Done        bool   `json:"done"`
+}
+
 func (h *TaskHandler) CreateTask(c *gin.Context) {
 	var req CreateTaskRequest
 
@@ -51,4 +57,91 @@ func (h *TaskHandler) CreateTask(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, task)
+}
+
+func (h *TaskHandler) GetTaskByID(c *gin.Context) {
+	id := c.Param("id")
+	taskID, err := uuid.Parse(id)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid task id",
+		})
+	}
+
+	task, err := h.repo.GetTaskByID(taskID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "task not found",
+		})
+	}
+
+	c.JSON(http.StatusFound, task)
+}
+
+func (h *TaskHandler) GetAllTasks(c *gin.Context) {
+	tasks, err := h.repo.GetAllTasks()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "no tasks found",
+		})
+	}
+
+	c.JSON(http.StatusOK, tasks)
+}
+
+func (h *TaskHandler) UpdateTask(c *gin.Context) {
+	id := c.Param("id")
+	taskID, err := uuid.Parse(id)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid task id"})
+		return
+	}
+
+	var req UpdateTaskRequest
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	task, err := h.repo.GetTaskByID(taskID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Task not found"})
+		return
+	}
+
+	if req.Title != "" {
+		task.Title = req.Title
+	}
+	if req.Description != "" {
+		task.Description = req.Description
+	}
+	task.Done = req.Done
+	task.UpdatedAt = time.Now()
+
+	if err := h.repo.UpdateTask(task); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update task"})
+		return
+	}
+
+	c.JSON(http.StatusOK, task)
+}
+
+func (h *TaskHandler) DeleteTask(c *gin.Context) {
+	id := c.Param("id")
+	taskID, err := uuid.Parse(id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "Invalid task id",
+		})
+	}
+
+	err = h.repo.DeleteTask(taskID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "Failed to delete",
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Task deleted"})
 }

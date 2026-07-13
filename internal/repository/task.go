@@ -27,7 +27,7 @@ func (r *TaskRepository) GetTaskByID(id uuid.UUID) (*model.Task, error) {
 	return &task, nil
 }
 
-func (r *TaskRepository) GeatAllTasks() ([]model.Task, error) {
+func (r *TaskRepository) GetAllTasks() ([]model.Task, error) {
 	var tasks []model.Task
 	err := r.db.Find(&tasks).Error
 	return tasks, err

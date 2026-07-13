@@ -5,6 +5,7 @@ import (
 
 	"github.com/OlehHawryliuk/task_manager/internal/config"
 	"github.com/OlehHawryliuk/task_manager/internal/handler"
+	"github.com/OlehHawryliuk/task_manager/internal/middleware"
 	"github.com/OlehHawryliuk/task_manager/internal/repository"
 	"github.com/gin-gonic/gin"
 	"github.com/subosito/gotenv"
@@ -19,23 +20,35 @@ func init() {
 
 func main() {
 	db := config.ConnectToDB()
+
 	taskRepo := repository.NewTaskRepo(db)
-	taskHadnlder := handler.NewTaskHandler(taskRepo)
+	taskHandler := handler.NewTaskHandler(taskRepo)
+
 	userRepo := repository.NewUserRepository(db)
 	userHandler := handler.NewUserHandler(userRepo)
 
+	authHandler := handler.NewAuthHandler(userRepo)
+
 	router := gin.Default()
-	router.POST("/task", taskHadnlder.CreateTask)
-	router.GET("/task/:id", taskHadnlder.GetTaskByID)
-	router.GET("/tasks", taskHadnlder.GeatAllTasks)
-	router.PUT("/task/:id", taskHadnlder.UpdateTask)
-	router.DELETE("/task/:id", taskHadnlder.DeleteTask)
-	router.POST("/user/", userHandler.CreateUser)
-	router.GET("/user/:id", userHandler.GetUserByID)
-	router.GET("users/", userHandler.GetAllUsers)
-	router.PUT("user/:id", userHandler.UpdateUser)
-	router.DELETE("user/:id", userHandler.DeleteUser)
-	router.GET("user/email/:email", userHandler.GetUserByEmail)
+
+	router.POST("/auth/register", authHandler.Register)
+	router.POST("/auth/login", authHandler.UserLogin)
+
+	protected := router.Group("")
+
+	protected.Use(middleware.AuthMiddleware())
+
+	protected.POST("/tasks", taskHandler.CreateTask)
+	protected.GET("/tasks/:id", taskHandler.GetTaskByID)
+	protected.GET("/tasks", taskHandler.GetAllTasks)
+	protected.PUT("/tasks/:id", taskHandler.UpdateTask)
+	protected.DELETE("/tasks/:id", taskHandler.DeleteTask)
+	protected.POST("/users", userHandler.CreateUser)
+	protected.GET("/users/:id", userHandler.GetUserByID)
+	protected.GET("/users", userHandler.GetAllUsers)
+	protected.PUT("/users/:id", userHandler.UpdateUser)
+	protected.DELETE("/users/:id", userHandler.DeleteUser)
+	protected.GET("/users/email/:email", userHandler.GetUserByEmail)
 
 	router.Run()
 }

@@ -6,19 +6,19 @@ import (
 	"gorm.io/gorm"
 )
 
-type UserRepositoty struct {
+type UserRepository struct {
 	db *gorm.DB
 }
 
-func NewUserRepository(db *gorm.DB) *UserRepositoty {
-	return &UserRepositoty{db: db}
+func NewUserRepository(db *gorm.DB) *UserRepository {
+	return &UserRepository{db: db}
 }
 
-func (r *UserRepositoty) CreateUser(user *model.User) error {
+func (r *UserRepository) CreateUser(user *model.User) error {
 	return r.db.Create(user).Error
 }
 
-func (r *UserRepositoty) GetUserByID(id uuid.UUID) (*model.User, error) {
+func (r *UserRepository) GetUserByID(id uuid.UUID) (*model.User, error) {
 	var user model.User
 	err := r.db.First(&user, "id = ?", id).Error
 
@@ -29,7 +29,7 @@ func (r *UserRepositoty) GetUserByID(id uuid.UUID) (*model.User, error) {
 	return &user, nil
 }
 
-func (r *UserRepositoty) GetUserByEmail(email string) (*model.User, error) {
+func (r *UserRepository) GetUserByEmail(email string) (*model.User, error) {
 	var user model.User
 	err := r.db.First(&user, "email = ?", email).Error
 
@@ -40,7 +40,7 @@ func (r *UserRepositoty) GetUserByEmail(email string) (*model.User, error) {
 	return &user, nil
 }
 
-func (r *UserRepositoty) GetAllUsers() ([]model.User, error) {
+func (r *UserRepository) GetAllUsers() ([]model.User, error) {
 	var users []model.User
 
 	err := r.db.Find(&users).Error
@@ -51,10 +51,10 @@ func (r *UserRepositoty) GetAllUsers() ([]model.User, error) {
 	return users, nil
 }
 
-func (r *UserRepositoty) UpdateUser(user *model.User) error {
+func (r *UserRepository) UpdateUser(user *model.User) error {
 	return r.db.Save(user).Error
 }
 
-func (r *UserRepositoty) DeleteUser(id uuid.UUID) error {
+func (r *UserRepository) DeleteUser(id uuid.UUID) error {
 	return r.db.Delete(&model.User{}, "id = ?", id).Error
 }
