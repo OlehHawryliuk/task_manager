@@ -102,7 +102,7 @@ func (h *AuthHandler) UserLogin(c *gin.Context) {
 
 	user, err := h.userRepo.GetUserByEmail(req.Email)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
+		c.JSON(http.StatusUnauthorized, gin.H{
 			"error": "Invalid email or password",
 		})
 		return

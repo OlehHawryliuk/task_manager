@@ -11,11 +11,15 @@ import (
 )
 
 type TaskHandler struct {
-	repo *repository.TaskRepository
+	repo     *repository.TaskRepository
+	userRepo *repository.UserRepository
 }
 
-func NewTaskHandler(repo *repository.TaskRepository) *TaskHandler {
-	return &TaskHandler{repo: repo}
+func NewTaskHandler(repo *repository.TaskRepository, userRepo *repository.UserRepository) *TaskHandler {
+	return &TaskHandler{
+		repo:     repo,
+		userRepo: userRepo,
+	}
 }
 
 type CreateTaskRequest struct {
@@ -32,11 +36,31 @@ type UpdateTaskRequest struct {
 func (h *TaskHandler) CreateTask(c *gin.Context) {
 	var req CreateTaskRequest
 
-	err := c.ShouldBindJSON(&req)
+	userID := c.GetString("userID")
+	if userID == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "Missing user ID",
+		})
+
+		return
+	}
+
+	ParsedUserID, err := uuid.Parse(userID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid user ID",
+		})
+
+		return
+	}
+
+	err = c.ShouldBindJSON(&req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "failed to create task",
 		})
+
+		return
 	}
 
 	task := model.Task{
@@ -44,7 +68,7 @@ func (h *TaskHandler) CreateTask(c *gin.Context) {
 		Title:       req.Title,
 		Description: req.Description,
 		Done:        false,
-		UserID:      uuid.New(),
+		UserID:      ParsedUserID,
 		CreatedAt:   time.Now(),
 		UpdatedAt:   time.Now(),
 	}
@@ -54,6 +78,8 @@ func (h *TaskHandler) CreateTask(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "failed to create task",
 		})
+
+		return
 	}
 
 	c.JSON(http.StatusCreated, task)
@@ -66,6 +92,8 @@ func (h *TaskHandler) GetTaskByID(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "Invalid task id",
 		})
+
+		return
 	}
 
 	task, err := h.repo.GetTaskByID(taskID)
@@ -73,9 +101,11 @@ func (h *TaskHandler) GetTaskByID(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "task not found",
 		})
+
+		return
 	}
 
-	c.JSON(http.StatusFound, task)
+	c.JSON(http.StatusOK, task)
 }
 
 func (h *TaskHandler) GetAllTasks(c *gin.Context) {
@@ -84,16 +114,47 @@ func (h *TaskHandler) GetAllTasks(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "no tasks found",
 		})
+
+		return
 	}
 
 	c.JSON(http.StatusOK, tasks)
 }
 
 func (h *TaskHandler) UpdateTask(c *gin.Context) {
+	userID := c.GetString("userID")
+	if userID == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "Missing user ID",
+		})
+
+		return
+	}
+
+	ParsedUserID, err := uuid.Parse(userID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid user ID",
+		})
+
+		return
+	}
+
+	user, err := h.userRepo.GetUserByID(ParsedUserID)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "User not found",
+		})
+
+		return
+	}
+
 	id := c.Param("id")
 	taskID, err := uuid.Parse(id)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid task id"})
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid task id",
+		})
 		return
 	}
 
@@ -107,6 +168,13 @@ func (h *TaskHandler) UpdateTask(c *gin.Context) {
 	task, err := h.repo.GetTaskByID(taskID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Task not found"})
+		return
+	}
+
+	if task.UserID != ParsedUserID && user.Role != "admin" {
+		c.JSON(http.StatusForbidden, gin.H{
+			"error": "Forbiden: you can only update your own tasks",
+		})
 		return
 	}
 
@@ -128,12 +196,57 @@ func (h *TaskHandler) UpdateTask(c *gin.Context) {
 }
 
 func (h *TaskHandler) DeleteTask(c *gin.Context) {
+	userID := c.GetString("userID")
+	if userID == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "Missing user ID",
+		})
+
+		return
+	}
+
+	ParsedUserID, err := uuid.Parse(userID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid user ID",
+		})
+
+		return
+	}
+
+	user, err := h.userRepo.GetUserByID(ParsedUserID)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "User not found",
+		})
+
+		return
+	}
+
 	id := c.Param("id")
 	taskID, err := uuid.Parse(id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{
+		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "Invalid task id",
 		})
+
+		return
+	}
+
+	task, err := h.repo.GetTaskByID(taskID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "Task not found",
+		})
+
+		return
+	}
+
+	if task.UserID != ParsedUserID && user.Role != "admin" {
+		c.JSON(http.StatusForbidden, gin.H{
+			"error": "Forbiden: you can only delete your own tasks",
+		})
+		return
 	}
 
 	err = h.repo.DeleteTask(taskID)
@@ -141,6 +254,8 @@ func (h *TaskHandler) DeleteTask(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{
 			"error": "Failed to delete",
 		})
+
+		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Task deleted"})

@@ -5,11 +5,14 @@ import (
 	"os"
 
 	"github.com/OlehHawryliuk/task_manager/internal/model"
+	"github.com/OlehHawryliuk/task_manager/internal/repository"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
 var DB *gorm.DB
+var UserRepo *repository.UserRepository
+var TaskRepo *repository.TaskRepository
 
 func ConnectToDB() *gorm.DB {
 	dsn := os.Getenv("DB_URL")
@@ -24,5 +27,9 @@ func ConnectToDB() *gorm.DB {
 	log.Println("db connected successfully")
 
 	DB = db
+	UserRepo = repository.NewUserRepository(db)
+	TaskRepo = repository.NewTaskRepo(db)
+
+	log.Println("Database connected successfully!")
 	return db
 }

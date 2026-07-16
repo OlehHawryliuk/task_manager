@@ -21,12 +21,11 @@ func init() {
 func main() {
 	db := config.ConnectToDB()
 
-	taskRepo := repository.NewTaskRepo(db)
-	taskHandler := handler.NewTaskHandler(taskRepo)
-
 	userRepo := repository.NewUserRepository(db)
-	userHandler := handler.NewUserHandler(userRepo)
+	taskRepo := repository.NewTaskRepo(db)
 
+	userHandler := handler.NewUserHandler(userRepo)
+	taskHandler := handler.NewTaskHandler(taskRepo, userRepo)
 	authHandler := handler.NewAuthHandler(userRepo)
 
 	router := gin.Default()
@@ -38,17 +37,26 @@ func main() {
 
 	protected.Use(middleware.AuthMiddleware())
 
-	protected.POST("/tasks", taskHandler.CreateTask)
-	protected.GET("/tasks/:id", taskHandler.GetTaskByID)
-	protected.GET("/tasks", taskHandler.GetAllTasks)
-	protected.PUT("/tasks/:id", taskHandler.UpdateTask)
-	protected.DELETE("/tasks/:id", taskHandler.DeleteTask)
-	protected.POST("/users", userHandler.CreateUser)
-	protected.GET("/users/:id", userHandler.GetUserByID)
-	protected.GET("/users", userHandler.GetAllUsers)
-	protected.PUT("/users/:id", userHandler.UpdateUser)
-	protected.DELETE("/users/:id", userHandler.DeleteUser)
-	protected.GET("/users/email/:email", userHandler.GetUserByEmail)
+	{
+		protected.POST("/tasks", taskHandler.CreateTask)
+		protected.GET("/tasks/:id", taskHandler.GetTaskByID)
+		protected.GET("/tasks", taskHandler.GetAllTasks)
+		protected.PUT("/tasks/:id", taskHandler.UpdateTask)
+		protected.DELETE("/tasks/:id", taskHandler.DeleteTask)
 
+		protected.GET("/users/:id", userHandler.GetUserByID)
+		protected.PUT("/users/:id", userHandler.UpdateUser)
+		protected.GET("/users/email/:email", userHandler.GetUserByEmail)
+		protected.DELETE("/users/:id", userHandler.DeleteUser)
+	}
+
+	admin := router.Group("")
+	admin.Use(middleware.AuthMiddleware())
+	admin.Use(middleware.AdminMiddleware())
+
+	{
+		admin.GET("/users", userHandler.GetAllUsers)
+		admin.POST("/users", userHandler.CreateUser)
+	}
 	router.Run()
 }
