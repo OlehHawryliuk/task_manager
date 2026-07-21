@@ -2,6 +2,7 @@ package tests
 
 import (
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/OlehHawryliuk/task_manager/internal/model"
@@ -13,7 +14,7 @@ import (
 )
 
 func setupTestDB() *gorm.DB {
-	dsn := "host=localhost user=gorm password=gorm dbname=task_manager_test port=5432 sslmode=disable"
+	dsn := os.Getenv("TEST_DB_URL")
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
 		panic("Failed to create database")
