@@ -2,8 +2,8 @@ package tests
 
 import (
 	"fmt"
-	"os"
 	"testing"
+	"time"
 
 	"github.com/OlehHawryliuk/task_manager/internal/model"
 	"github.com/OlehHawryliuk/task_manager/internal/repository"
@@ -14,16 +14,25 @@ import (
 )
 
 func setupTestDB() *gorm.DB {
-	dsn := os.Getenv("TEST_DB_URL")
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	dsn := "host=127.0.0.1 user=gorm password=gorm dbname=task_manager_test port=5432 sslmode=disable"
+	var db *gorm.DB
+	var err error
+	for range 5 {
+		db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
+		if err == nil {
+			break
+		}
+		time.Sleep(1 * time.Second)
+	}
+
 	if err != nil {
-		panic("Failed to create database")
+		panic("Failed to connect to database: " + err.Error())
 	}
 
 	db.AutoMigrate(&model.User{}, &model.Task{})
-
 	db.Exec("TRUNCATE TABLE tasks CASCADE")
 	db.Exec("TRUNCATE TABLE users CASCADE")
+
 	return db
 }
 
