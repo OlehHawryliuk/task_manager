@@ -34,6 +34,15 @@ func NewAuthHandler(repo *repository.UserRepository) *AuthHandler {
 	return &AuthHandler{userRepo: repo}
 }
 
+// @Summary Register new user
+// @Description Create a new user account
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param request body RegisterRequest true "User registration data"
+// @Success 201 {object} AuthResponse
+// @Failure 400 {object} map[string]string
+// @Router /auth/register [post]
 func (h *AuthHandler) Register(c *gin.Context) {
 	var req RegisterRequest
 	err := c.ShouldBindJSON(&req)
@@ -90,6 +99,15 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	})
 }
 
+// @Summary Login user
+// @Description User login and get JWT token
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param request body LoginRequest true "User login credentials"
+// @Success 200 {object} AuthResponse
+// @Failure 401 {object} map[string]string
+// @Router /auth/login [post]
 func (h *AuthHandler) UserLogin(c *gin.Context) {
 	var req LoginRequest
 	err := c.ShouldBindJSON(&req)

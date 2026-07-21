@@ -1,1 +1,25 @@
+# Environment
 .env
+.env.local
+
+# Swagger/Docs
+docs/
+swagger.json
+swagger.yaml
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Go
+vendor/
+*.test
+*.out
+
+# Testing
+coverage.out

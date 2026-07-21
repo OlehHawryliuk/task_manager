@@ -1,14 +1,26 @@
+// @title Task Manager API
+// @version 1.0
+// @description REST API with JWT Auth and RBAC
+// @host localhost:3000
+// @BasePath /
+// @schemes http
+// @securityDefinitions.apikey Bearer
+// @in header
+// @name Authorization
 package main
 
 import (
 	"log"
 
+	"github.com/OlehHawryliuk/task_manager/docs"
 	"github.com/OlehHawryliuk/task_manager/internal/config"
 	"github.com/OlehHawryliuk/task_manager/internal/handler"
 	"github.com/OlehHawryliuk/task_manager/internal/middleware"
 	"github.com/OlehHawryliuk/task_manager/internal/repository"
 	"github.com/gin-gonic/gin"
 	"github.com/subosito/gotenv"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 func init() {
@@ -58,5 +70,8 @@ func main() {
 		admin.GET("/users", userHandler.GetAllUsers)
 		admin.POST("/users", userHandler.CreateUser)
 	}
+
+	docs.SwaggerInfo.BasePath = "/"
+	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	router.Run()
 }
