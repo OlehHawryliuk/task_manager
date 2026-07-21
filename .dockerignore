@@ -1,0 +1,13 @@
+.git
+.github
+.gitignore
+.vscode
+.idea
+.DS_Store
+docs
+tests
+.env.local
+README.md
+*.md
+*.test
+coverage.out
