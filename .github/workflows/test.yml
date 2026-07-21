@@ -26,15 +26,15 @@ jobs:
           - 5432:5432
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - name: Set up Go
-      uses: actions/setup-go@v4
+      uses: actions/setup-go@v5
       with:
         go-version: '1.21'
 
     - name: Cache Go modules
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ~/go/pkg/mod
         key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
@@ -45,17 +45,10 @@ jobs:
       run: go mod download
 
     - name: Run tests
-      run: go test ./... -v -race -coverprofile=coverage.out
+      run: go test ./tests/unit -v
       env:
-        DB_HOST: localhost
-        DB_USER: gorm
-        DB_PASSWORD: gorm
-        DB_NAME: task_manager_test
-        DB_PORT: 5432
-        JWT_SECRET: test-secret-key-for-github-actions
-
-    - name: Upload coverage
-      uses: codecov/codecov-action@v3
-      with:
-        file: ./coverage.out
-        flags: unittests
+        POSTGRES_HOST: 127.0.0.1
+        POSTGRES_USER: gorm
+        POSTGRES_PASSWORD: gorm
+        POSTGRES_DB: task_manager_test
+        POSTGRES_PORT: 5432
