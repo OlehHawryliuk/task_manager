@@ -6,6 +6,7 @@ import (
 	"github.com/google/uuid"
 )
 
+// change Password json to - later
 type User struct {
 	ID        uuid.UUID `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
 	Email     string    `json:"email" gorm:"uniqueIndex"`

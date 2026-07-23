@@ -1,24 +1,28 @@
 package handler
 
 import (
+	"encoding/json"
 	"net/http"
 	"time"
 
 	"github.com/OlehHawryliuk/task_manager/internal/model"
 	"github.com/OlehHawryliuk/task_manager/internal/repository"
+	"github.com/OlehHawryliuk/task_manager/internal/service"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
 
 type TaskHandler struct {
-	repo     *repository.TaskRepository
-	userRepo *repository.UserRepository
+	repo         *repository.TaskRepository
+	userRepo     *repository.UserRepository
+	cacheService *service.CacheService
 }
 
-func NewTaskHandler(repo *repository.TaskRepository, userRepo *repository.UserRepository) *TaskHandler {
+func NewTaskHandler(repo *repository.TaskRepository, userRepo *repository.UserRepository, cacheService *service.CacheService) *TaskHandler {
 	return &TaskHandler{
-		repo:     repo,
-		userRepo: userRepo,
+		repo:         repo,
+		userRepo:     userRepo,
+		cacheService: cacheService,
 	}
 }
 
@@ -93,9 +97,22 @@ func (h *TaskHandler) CreateTask(c *gin.Context) {
 		return
 	}
 
+	ctx := c.Request.Context()
+	h.cacheService.Delete(ctx, "tasks:all")
 	c.JSON(http.StatusCreated, task)
 }
 
+// @Summary Get a task by ID
+// @Description Retrieve a specific task by its unique UUID
+// @Tags Tasks
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param Authorization header string true "Bearer token"
+// @Param id path string true "Task UUID"
+// @Success 200 {object} model.Task
+// @Failure 400 {object} map[string]string "Invalid task ID or task not found"
+// @Router /tasks/{id} [get]
 func (h *TaskHandler) GetTaskByID(c *gin.Context) {
 	id := c.Param("id")
 	taskID, err := uuid.Parse(id)
@@ -130,6 +147,15 @@ func (h *TaskHandler) GetTaskByID(c *gin.Context) {
 // @Failure 401 {object} map[string]string
 // @Router /tasks [get]
 func (h *TaskHandler) GetAllTasks(c *gin.Context) {
+	ctx := c.Request.Context()
+	cacheKey := "tasks:all"
+
+	cachedData, err := h.cacheService.Get(ctx, cacheKey)
+	if err == nil {
+		c.JSON(http.StatusOK, json.RawMessage(cachedData))
+		return
+	}
+
 	tasks, err := h.repo.GetAllTasks()
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -139,20 +165,25 @@ func (h *TaskHandler) GetAllTasks(c *gin.Context) {
 		return
 	}
 
+	h.cacheService.Set(ctx, cacheKey, tasks, service.TaskCacheTTl)
 	c.JSON(http.StatusOK, tasks)
 }
 
 // @Summary Update a task
-// @Description Update task (owner or admin only)
+// @Description Update task data (accessible by owner or admin only)
 // @Tags Tasks
 // @Accept json
 // @Produce json
 // @Security Bearer
 // @Param Authorization header string true "Bearer token"
-// @Param id path string true "Task ID"
-// @Param request body UpdateTaskRequest true "Task data"
+// @Param id path string true "Task UUID"
+// @Param request body UpdateTaskRequest true "Task data to update"
 // @Success 200 {object} model.Task
-// @Failure 403 {object} map[string]string
+// @Failure 400 {object} map[string]string "Invalid input data"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 403 {object} map[string]string "Forbidden: you can only update your own tasks"
+// @Failure 404 {object} map[string]string "Task not found"
+// @Failure 500 {object} map[string]string "Internal server error"
 // @Router /tasks/{id} [put]
 func (h *TaskHandler) UpdateTask(c *gin.Context) {
 	userID := c.GetString("userID")
@@ -225,19 +256,24 @@ func (h *TaskHandler) UpdateTask(c *gin.Context) {
 		return
 	}
 
+	ctx := c.Request.Context()
+	h.cacheService.Delete(ctx, "tasks:all")
 	c.JSON(http.StatusOK, task)
 }
 
 // @Summary Delete a task
-// @Description Delete task (owner or admin only)
+// @Description Delete a specific task (accessible by owner or admin only)
 // @Tags Tasks
 // @Accept json
 // @Produce json
 // @Security Bearer
 // @Param Authorization header string true "Bearer token"
-// @Param id path string true "Task ID"
-// @Success 200 {object} map[string]string
-// @Failure 403 {object} map[string]string
+// @Param id path string true "Task UUID"
+// @Success 200 {object} map[string]string "Task deleted successfully"
+// @Failure 400 {object} map[string]string "Invalid task ID"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 403 {object} map[string]string "Forbidden: you can only delete your own tasks"
+// @Failure 404 {object} map[string]string "Task not found"
 // @Router /tasks/{id} [delete]
 func (h *TaskHandler) DeleteTask(c *gin.Context) {
 	userID := c.GetString("userID")
@@ -302,5 +338,7 @@ func (h *TaskHandler) DeleteTask(c *gin.Context) {
 		return
 	}
 
+	ctx := c.Request.Context()
+	h.cacheService.Delete(ctx, "tasks:all")
 	c.JSON(http.StatusOK, gin.H{"message": "Task deleted"})
 }

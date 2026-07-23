@@ -17,6 +17,7 @@ import (
 	"github.com/OlehHawryliuk/task_manager/internal/handler"
 	"github.com/OlehHawryliuk/task_manager/internal/middleware"
 	"github.com/OlehHawryliuk/task_manager/internal/repository"
+	"github.com/OlehHawryliuk/task_manager/internal/service"
 	"github.com/gin-gonic/gin"
 	"github.com/subosito/gotenv"
 	swaggerFiles "github.com/swaggo/files"
@@ -32,12 +33,14 @@ func init() {
 
 func main() {
 	db := config.ConnectToDB()
+	redis := config.ConnectToRedis()
 
 	userRepo := repository.NewUserRepository(db)
 	taskRepo := repository.NewTaskRepo(db)
+	redisRepo := service.NewCacheService(redis)
 
 	userHandler := handler.NewUserHandler(userRepo)
-	taskHandler := handler.NewTaskHandler(taskRepo, userRepo)
+	taskHandler := handler.NewTaskHandler(taskRepo, userRepo, redisRepo)
 	authHandler := handler.NewAuthHandler(userRepo)
 
 	router := gin.Default()
