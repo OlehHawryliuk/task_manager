@@ -207,6 +207,8 @@ task-manager/
 
 ## Environment Variables
 
+Create a `.env` file in the root directory with the following variables:
+
 ```env
 # Server Configuration
 PORT=3000
@@ -227,6 +229,8 @@ REDIS_PASSWORD=
 # JWT Configuration
 JWT_SECRET=your-super-secret-key-min-32-characters-long!!!
 ```
+
+**Note:** The `.env` file is not committed to the repository. Use the template above for local development.
 
 ## Usage Examples
 
