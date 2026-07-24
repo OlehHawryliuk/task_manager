@@ -3,7 +3,6 @@
 ![Go](https://img.shields.io/badge/Go-1.21-blue)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-336791)
 ![Redis](https://img.shields.io/badge/Redis-7-DC382D)
-![License](https://img.shields.io/badge/License-MIT-green)
 
 REST API for task management with JWT authentication and Role-Based Access Control (RBAC).
 
