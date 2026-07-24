@@ -45,8 +45,10 @@ func main() {
 
 	router := gin.Default()
 
+	router.Use(middleware.ErrorHandlingMiddleware())
 	router.POST("/auth/register", authHandler.Register)
 	router.POST("/auth/login", authHandler.UserLogin)
+	router.GET("/health", handler.HealthCheck)
 
 	protected := router.Group("")
 

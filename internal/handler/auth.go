@@ -2,7 +2,9 @@ package handler
 
 import (
 	"net/http"
+	"time"
 
+	"github.com/OlehHawryliuk/task_manager/internal/apierror"
 	"github.com/OlehHawryliuk/task_manager/internal/model"
 	"github.com/OlehHawryliuk/task_manager/internal/repository"
 	"github.com/OlehHawryliuk/task_manager/internal/service"
@@ -41,61 +43,53 @@ func NewAuthHandler(repo *repository.UserRepository) *AuthHandler {
 // @Produce json
 // @Param request body RegisterRequest true "User registration data"
 // @Success 201 {object} AuthResponse
-// @Failure 400 {object} map[string]string
+// @Failure 400 {object} apierror.ErrorResponse
+// @Failure 409 {object} apierror.ErrorResponse
 // @Router /auth/register [post]
 func (h *AuthHandler) Register(c *gin.Context) {
 	var req RegisterRequest
-	err := c.ShouldBindJSON(&req)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": err.Error(),
-		})
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.Error(apierror.NewInvalidRequest(err.Error()))
 		return
 	}
 
-	_, err = h.userRepo.GetUserByEmail(req.Email)
-	if err == nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "User already exists",
-		})
+	existingUser, _ := h.userRepo.GetUserByEmail(req.Email)
+	if existingUser != nil {
+		c.Error(apierror.NewConflict("Email already exists"))
 		return
 	}
 
-	password, err := service.HashPassword(req.Password)
+	hashedPassword, err := service.HashPassword(req.Password)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
-		})
+		c.Error(apierror.ErrInternalServer)
 		return
 	}
 
-	newUser := &model.User{
-		ID:       uuid.New(),
-		Email:    req.Email,
-		Username: req.Username,
-		Password: password,
-		Role:     "user",
+	user := &model.User{
+		ID:        uuid.New(),
+		Email:     req.Email,
+		Username:  req.Username,
+		Password:  hashedPassword,
+		Role:      "user",
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
 	}
 
-	err = h.userRepo.CreateUser(newUser)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to create user",
-		})
+	if err := h.userRepo.CreateUser(user); err != nil {
+		c.Error(apierror.ErrDatabaseError)
 		return
 	}
 
-	token, err := service.GenerateToken(newUser.ID.String())
+	token, err := service.GenerateToken(user.ID.String())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to generate token",
-		})
+		c.Error(apierror.ErrInternalServer)
 		return
 	}
 
 	c.JSON(http.StatusCreated, AuthResponse{
 		Token: token,
-		User:  newUser,
+		User:  user,
 	})
 }
 
@@ -106,38 +100,31 @@ func (h *AuthHandler) Register(c *gin.Context) {
 // @Produce json
 // @Param request body LoginRequest true "User login credentials"
 // @Success 200 {object} AuthResponse
-// @Failure 401 {object} map[string]string
+// @Failure 400 {object} apierror.ErrorResponse
+// @Failure 401 {object} apierror.ErrorResponse
 // @Router /auth/login [post]
 func (h *AuthHandler) UserLogin(c *gin.Context) {
 	var req LoginRequest
-	err := c.ShouldBindJSON(&req)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": err.Error(),
-		})
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.Error(apierror.NewInvalidRequest(err.Error()))
 		return
 	}
 
 	user, err := h.userRepo.GetUserByEmail(req.Email)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "Invalid email or password",
-		})
+	if err != nil || user == nil {
+		c.Error(apierror.NewUnauthorized("Invalid email or password"))
 		return
 	}
 
 	if !service.VerifyPassword(user.Password, req.Password) {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "Invalid email or password",
-		})
+		c.Error(apierror.NewUnauthorized("Invalid email or password"))
 		return
 	}
 
 	token, err := service.GenerateToken(user.ID.String())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to generate token",
-		})
+		c.Error(apierror.ErrInternalServer)
 		return
 	}
 
@@ -145,5 +132,4 @@ func (h *AuthHandler) UserLogin(c *gin.Context) {
 		Token: token,
 		User:  user,
 	})
-
 }
